@@ -1,7 +1,7 @@
-;TITLE DevinPiner_fibonacci.asm
-; Description: 
+TITLE DevinPiner_RString.asm
+; Description: Input from the user determines how many times to generate a random string
 ; Author: Devin Piner 107543409
-; Date Created: Sept. 22, 2017
+; Date Created: Oct. 11, 2017
 
 INCLUDE Irvine32.inc
 
