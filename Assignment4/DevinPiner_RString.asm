@@ -1,7 +1,7 @@
 TITLE DevinPiner_RString.asm
 ; Description: Input from the user determines how many times to generate a random string
 ; Author: Devin Piner 107543409
-; Date Created: Oct. 11, 2017
+; Date Created: Oct. 13, 2017
 
 INCLUDE Irvine32.inc
 
@@ -19,7 +19,7 @@ UserInt PROC	;------------------------------------------------------------------
 	; Requires: 
 
 	.data
-		prompt1 BYTE "Please enter an integer: ", 0
+		prompt1 BYTE "Please enter an integer: ", 0			;string to prompt the user to enter an int
 
 	.code
 		MOV EAX, 0					;clear eax
@@ -37,8 +37,8 @@ RandStr PROC	;------------------------------------------------------------------
 ; Requires: ECX > 1
 
 	.data
-		random_string BYTE 26 DUP(0)
-		random_string_size = $-random_string
+		random_string BYTE 26 DUP(0)				;an array of 26 bytes
+		random_string_size = $-random_string		;size of the string array
 
 	.code
 		call Randomize
@@ -58,11 +58,11 @@ RandStr PROC	;------------------------------------------------------------------
 			; Generate a random number between 0 and 20, then add 5
 			; This number will be the number of character that will be generated
 			; By the requirements, the size of the string must be 5-25
-			; Because RandomRange only returns 0 - (n-1), we have to give it 20
+			; Because RandomRange only returns 0 - (n-1), we have to give it 21
 			; and add 5 so that we satisfy the requirements
-			MOV EAX, 20				;Move 20 into EAX
-			call RandomRange		;Call RandomRange, will return 0-19 in EAX
-			ADD EAX, 5				;Add 5 to the number to make the range 5-24
+			MOV EAX, 21				;Move 20 into EAX
+			call RandomRange		;Call RandomRange, will return 0-20 in EAX
+			ADD EAX, 5				;Add 5 to the number to make the range 5-25
 			MOV ECX, EAX			;Move the random number into ECX to use in the next loop
 
 			; Step through the characters of random_string and generate a random letter for each
@@ -73,7 +73,7 @@ RandStr PROC	;------------------------------------------------------------------
 			; position which is being tracked by ECX, ECX = the number of characters to randomly generate
 			; We also know that the lowest byte is all that is being used, so we just put that in the string
 			RandStr_CharLoop: ;---------------------------------------------^
-				MOV EAX, 25						;Move the range we need into EAX
+				MOV EAX, 26						;Move the range we need into EAX
 				call RandomRange				;Call RandomRange to get a number from 0-25
 				ADD EAX, 'A'					;Add 'A' (41h) to the random number in EAX
 				MOV [random_string+ECX], AL		;Move the randomly generate number into the string
@@ -88,15 +88,10 @@ RandStr PROC	;------------------------------------------------------------------
 
 			; Now that we have a randomly generated string, we need to print it to the console
 			; To do this we need to call WriteString, which expects the address of the string 
-			; to be in EDX. We ar alread using EDX to store the loop counter of the main loop
-			; (RandStr_MainLoop), so we need to swap it into EAX temporarily. Once we do that,
-			; we get the address of the string and put it in EDX and call WriteString and Crlf.
-			; Then we put the count of the main loop back into EDX from EAX
-			;MOV EAX, EDX
+			; to be in EDX.
 			MOV EDX, OFFSET random_string
 			call WriteString
 			call Crlf
-			;MOV EDX, EAX
 
 			; Now we're at the end of the main loop, so put EBX back into ECX so that we generate
 			; the correct number of strings specified by the user
@@ -104,9 +99,11 @@ RandStr PROC	;------------------------------------------------------------------
 
 		LOOP RandStr_MainLoop	;--------------------------------------------------------^
 		ret
+
 RandStr ENDP
 
 COMMENT ?
+I tried to use this to clear the string, but [ESI] was giving me an error that I couldnt fix
 	ClearRandStr PROC
 		L2:	;---------------------------------------------
 			MOV [ESI], 0
@@ -122,10 +119,10 @@ main PROC		;--------------------------------------------------------------------
 	call UserInt					;Get an int from the user, value returned in EAX
 	MOV ECX, EAX					;Move the value from EAX to ECX
 
-	call Crlf
-	call RandStr
-	call Crlf
-	call WaitMsg
+	call Crlf						;go to the next line
+	call RandStr					;generate the random strings
+	call Crlf						;go to the next line
+	call WaitMsg					;Print a wait message at the end of the program
 
 	call DumpRegs
 
