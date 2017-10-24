@@ -126,7 +126,7 @@ main endp
 
 fillArray PROC
 ; Generates an array of random integers of length passed in EBX
-; Recieves: pointer to the array in EAX, lowerbound in ECX, upperbound in EDX, array length EBX
+; Receives: pointer to the array in EAX, lowerbound in ECX, upperbound in EDX, array length EBX
 ; Returns: An array passed in through EAX
 ; Requires: All values must be size DWORD
 
