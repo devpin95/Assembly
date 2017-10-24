@@ -1,4 +1,5 @@
-; Program template
+; Devin Piner Quiz Programming Assignment
+; Description: Generate n numbers in an array between j and k
 
 Include Irvine32.inc
 
@@ -7,6 +8,7 @@ clearEBX TEXTEQU <mov EBX, 0>
 clearECX TEXTEQU <mov ECX, 0>
 clearEDX TEXTEQU <mov EDX, 0>
 WSTR TEXTEQU <call WriteString>
+WDEC TEXTEQU <call WriteDec>
 NEXTLINE TEXTEQU <call Crlf>
 WMSG TEXTEQU <call WaitMsg>
 RINT TEXTEQU <call ReadInt>
@@ -19,7 +21,7 @@ APrompt BYTE "A: ", 0
 JPrompt BYTE "j: ", 0
 KPrompt BYTE "k: ", 0
 
-IntArray DWORD 20 DUP(0FFFFFFFFh)
+IntArray DWORD 20 DUP(0ffffffffh)	;fill it with all f's so that it's easier to see in VS
 UserLength DWORD 20
 UpperBound DWORD 0
 LowerBound DWORD 0
@@ -27,6 +29,7 @@ LowerBound DWORD 0
 .code
 main proc
 
+	; Clear the registers
 	clearEAX
 	clearEBX
 	clearECX
@@ -36,8 +39,10 @@ main proc
 	MOV EDX, OFFSET IntPrompt				; Print the prompt
 	WSTR									; -
 	RINT									; Get the value from the user
-	CMP EAX, 20								; 
+	CMP EAX, 20								; Compare
 	JA GetArrayLength						; EAX < 20
+	CMP EAX, 0								; Compare
+	JBE GetArrayLength						; EAX < 0
 
 	MOV EBX, EAX							; EBX now has the length of the array to generate
 
@@ -45,43 +50,72 @@ main proc
 	MOV EDX, OFFSET LowerBoundPrompt		; Print the prompt
 	WSTR									; -
 	RINT									; Get the value from the user
-	CMP EAX, 200							;
+	CMP EAX, 200							; Compare
 	JAE GetLowerBound						; EAX >= 200
+	CMP EAX, 0								; Compare
+	JBE GetArrayLength						; EAX < 0
 
-	MOV ECX, EAX							;ECX now has the lower bound
+	MOV ECX, EAX							; ECX now has the lower bound
 
 	getUpperBound:
-	MOV EDX, OFFSET UpperBoundPrompt
-	WSTR
-	RINT
-	CMP EAX, 200
-	JA getUpperBound
-	CMP EAX, ECX
-	JBE getUpperBound
+	MOV EDX, OFFSET UpperBoundPrompt		; Print the prompt
+	WSTR									; -
+	RINT									; Get the value from the user
+	CMP EAX, 200							; Compare
+	JA getUpperBound						; EAX >= 200
+	CMP EAX, ECX							; Compare
+	JBE getUpperBound						; Lowerbound > upperbound
+	CMP EAX, 0								; Compare
+	JBE GetArrayLength						; EAX < 0
 
 	MOV EDX, EAX							;EDX now has the upper bound
 
 	MOV EAX, OFFSET IntArray				;EAX now has the offset of the array
 
+	; Print out some white space
+	NEXTLINE
+	NEXTLINE
+
+	; Call the function to generate the array
 	CALL fillArray
 
+	; Save the variables in the registers because we will need to mix them up to print
+	; out the array usimg DumpMem
 	PUSH EAX
 	PUSH EBX
 	PUSH ECX
 	PUSH EDX
 
+	MOV EDX, OFFSET APrompt	
+	WSTR									; Print "A:"
+	MOV EAX, EBX							; Move the number of integers into EAX
+	WDEC									; Print EAX
+	NEXTLINE								; Go to the next line
+	MOV EDX, OFFSET JPrompt
+	WSTR									; Print "j:"
+	MOV EAX, ECX							; Move the lower bound into EAX
+	WDEC									; Print EAX
+	NEXTLINE								; Go to the next line
+	MOV EDX, OFFSET KPrompt
+	WSTR									; Print "k:"
+	MOV EAX, ECX							; Move the upper bound into EAX
+	WDEC									; Print EAX
+	NEXTLINE								; Go to the next line
+	
 	; Print out the array
-	MOV ESI, OFFSET IntArray
-	MOV ECX, EBX
-	MOV EBX, 4
-
+	MOV ESI, OFFSET IntArray				; Move the address of the array into ESI
+	MOV ECX, EBX							; Move the number of elements in the array into EBX
+	MOV EBX, 4								; Move the size of each element into EBX
 	CALL DumpMem
 
+	; Restore the registers
 	POP EDX
 	POP EBX
 	POP ECX
 	POP EAX
 
+	; Print some white space then the wait message
+	NEXTLINE
 	WMSG
 
 	exit
