@@ -53,7 +53,7 @@ main proc
 	CMP EAX, 200							; Compare
 	JAE GetLowerBound						; EAX >= 200
 	CMP EAX, 0								; Compare
-	JBE GetArrayLength						; EAX < 0
+	JBE GetLowerBound						; EAX < 0
 
 	MOV ECX, EAX							; ECX now has the lower bound
 
@@ -66,7 +66,7 @@ main proc
 	CMP EAX, ECX							; Compare
 	JBE getUpperBound						; Lowerbound > upperbound
 	CMP EAX, 0								; Compare
-	JBE GetArrayLength						; EAX < 0
+	JBE getUpperBound						; EAX < 0
 
 	MOV EDX, EAX							;EDX now has the upper bound
 
@@ -98,7 +98,10 @@ main proc
 	NEXTLINE								; Go to the next line
 	MOV EDX, OFFSET KPrompt
 	WSTR									; Print "k:"
-	MOV EAX, ECX							; Move the upper bound into EAX
+	POP EDX									; We need EDX because the upper bound is stored in there
+											; so we need to pop it off the stack
+	MOV EAX, EDX							; Move the upper bound into EAX
+	PUSH EDX								; Push EDX back on the stack in case we need it later
 	WDEC									; Print EAX
 	NEXTLINE								; Go to the next line
 	
