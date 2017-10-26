@@ -7,8 +7,9 @@ INCLUDE Irvine32.inc
 
 .data
 	;{your variables are to be defined here}
-	MAX_STRING_LENGTH= 51				;Maximum number of characters (50), including null terminator (51)
-	user_string BYTE "My String sucks", 0 ;51 DUP(0)			;String of 51 chars, with an extra byte for null terminator
+	MAX_STRING_LENGTH = 51				;Maximum number of characters (50), including null terminator (51)
+	user_string_length DWORD 0
+	user_string BYTE 51 DUP(0)			;String of 51 chars, with an extra byte for null terminator
 	user_prompt BYTE "->", 0
 
 .data?
@@ -65,8 +66,11 @@ main PROC
 	JE Option5
 
 	Option1:
+		MOV EDX, OFFSET user_string
+		MOV ECX, MAX_STRING_LENGTH
 		call Clrscr
 		call EnterAString
+		MOV user_string_length, EAX
 		JMP Beginning
 	Option2:
 		call Clrscr
@@ -81,6 +85,8 @@ main PROC
 		call IsPalindrome
 		JMP Beginning
 	Option5:
+		MOV EDX, OFFSET user_string
+		MOV EAX, user_string_length
 		call Clrscr
 		call PrintString
 		JMP Beginning
@@ -123,8 +129,12 @@ PrintMenu PROC
 PrintMenu ENDP
 
 EnterAString PROC
+; Gets a string from the user
+; Receives: string address in edx, string length in EAX (null terminator included in cound)
+; Returns: the string entered by the user, string length in EAX
+; Expects: 
 	.data
-		ttl BYTE "****Enter A String:", 0dh, 0ah, 0
+		ttl BYTE "Enter A String (50 Characters or fewer): ", 0
 
 	.code
 	PUSH EDX
@@ -132,6 +142,8 @@ EnterAString PROC
 	call WriteString
 
 	POP EDX
+	call ReadString
+
 	ret
 EnterAString ENDP
 
@@ -175,14 +187,26 @@ IsPalindrome PROC
 IsPalindrome ENDP
 
 PrintString PROC
+; Prints the string along with it's length
+; Receives: address of string in EDX, string length in EAX
 	.data
-		ttl4 BYTE "****Print String", 0dh, 0ah, 0
+		ttl4 BYTE "Length: ", 0
 
 	.code
+
+	call WriteString
+	call Crlf
+
 	PUSH EDX
+	PUSH EAX
+
 	MOV EDX, OFFSET ttl4
 	call WriteString
+	call WriteDec
+	call Crlf
+	call Crlf
 
+	POP EAX
 	POP EDX
 	ret
 PrintString ENDP
