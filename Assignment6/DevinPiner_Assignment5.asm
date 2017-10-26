@@ -157,6 +157,9 @@ ToLower PROC
 ; Returns: the string with all alpha characters in lowercase
 ; Requires: 
 
+	CMP ECX, 0
+	JBE DontDo
+	
 	PUSH EDX
 	PUSH EAX
 
@@ -179,6 +182,7 @@ ToLower PROC
 	POP EAX
 	POP EDX
 
+	DontDo:
 	ret
 ToLower ENDP
 
@@ -190,6 +194,9 @@ CleanStr PROC
 		temp_string BYTE 51 DUP(0)			; A string to hold the string without special chars
 
 	.code
+
+	CMP ECX, 0
+	JBE DontDo
 
 	PUSH EBX
 
@@ -238,6 +245,8 @@ CleanStr PROC
 
 	POP EDX
 
+	DontDo:
+	MOV EBX, 0
 	ret
 CleanStr ENDP
 
