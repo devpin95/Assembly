@@ -73,12 +73,17 @@ main PROC
 		MOV user_string_length, EAX
 		JMP Beginning
 	Option2:
+		MOV ESI, OFFSET user_string
+		MOV ECX, user_string_length
 		call Clrscr
 		call ToLower
 		JMP Beginning
 	Option3:
+		MOV ESI, OFFSET user_string
+		MOV ECX, user_string_length
 		call Clrscr
 		call CleanStr
+		MOV user_string_length, EBX
 		JMP Beginning
 	Option4:
 		call Clrscr
@@ -108,7 +113,7 @@ PrintMenu PROC
 		'1. Enter a string', 0Ah, 0Dh,
 		'2. Convert the string to lower case', 0Ah, 0Dh,
 		'3. Remove all non-letter elements', 0Ah, 0Dh,
-		'4. Is the string a palindrome?', 0Ah, 0Dh,
+		'4. ', 0Ah, 0Dh,
 		'5. Print the string', 0Ah, 0Dh,
 		'6. Quit', 0Ah, 0Dh, 0
 
@@ -148,28 +153,91 @@ EnterAString PROC
 EnterAString ENDP
 
 ToLower PROC
-	.data
-		ttl1 BYTE "****To Lower", 0dh, 0ah, 0
+; Receives: address of a string in ESI, string length in ECX
+; Returns: the string with all alpha characters in lowercase
+; Requires: 
 
-	.code
 	PUSH EDX
-	MOV EDX, OFFSET ttl1
-	call WriteString
+	PUSH EAX
 
+	MOV EDX, 0
+
+	ToLower_L1:
+		MOV AL, BYTE PTR [ESI+EDX]			;Mov the first char of the string into EAX
+		CMP AL, 041h
+		JB ToLower_L1_Continue
+		CMP AL, 05Ah
+		JNBE ToLower_L1_Continue
+
+		ADD EAX, 32
+		MOV [ESI+EDX], AL
+
+		ToLower_L1_Continue:
+		INC EDX
+	LOOP ToLower_L1
+
+	POP EAX
 	POP EDX
+
 	ret
 ToLower ENDP
 
 CleanStr PROC
+; Removes all non-letter characters from a string
+; Receives: address of the string in ESI, length of the string in ECX
+; Returns: the cleaned string at the address passed in through ESI
 	.data
-		ttl2 BYTE "****Clean String", 0dh, 0ah, 0
+		temp_string BYTE 51 DUP(0)			; A string to hold the string without special chars
 
 	.code
-	PUSH EDX
-	MOV EDX, OFFSET ttl2
-	call WriteString
+
+	PUSH EBX
+
+	MOV EDX, 0
+	MOV EBX, 0
+
+	CleanStr_L1:
+		
+		MOV AL, [ESI+EBX]
+
+		; B Check if the char is less than A (041h)
+		CMP AL, 041h
+		JB CleanStr_L1_Skip
+		; A Check if the char is more than z (07Ah)
+		CMP AL, 07Ah
+		JA CleanStr_L1_Skip
+
+		; C Check if the char is less than Z (05Ah)
+		CMP AL, 05Ah
+		JBE ClearStr_L1_AddChar
+		; D Check if the char is more than a (061h)
+		CMP AL, 061h
+		JAE ClearStr_L1_AddChar
+
+		JMP CleanStr_L1_Skip
+
+		ClearStr_L1_AddChar:
+		MOV [temp_string+EDX], AL
+		INC EDX
+
+		CleanStr_L1_Skip:
+		INC EBX
+
+	LOOP CleanStr_L1
+
+	MOV ECX, EDX
+	MOV EBX, 0
+
+	CleanStr_L2:
+		MOV AL, [temp_string + EBX]
+		MOV [ESI + EBX], AL
+		INC EBX
+		MOV AL, 0
+		MOV [ESI + EBX], AL
+	LOOP CleanStr_L2
 
 	POP EDX
+
 	ret
 CleanStr ENDP
 
