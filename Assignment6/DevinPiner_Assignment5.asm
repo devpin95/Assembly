@@ -167,10 +167,12 @@ ToLower PROC
 
 	ToLower_L1:
 		MOV AL, BYTE PTR [ESI+EDX]			;Mov the first char of the string into EAX
-		CMP AL, 041h
-		JB ToLower_L1_Continue
-		CMP AL, 05Ah
-		JNBE ToLower_L1_Continue
+		PUSH EAX
+		call IsAlpha
+
+		CMP AH, 1
+		POP EAX
+		JNE ToLower_L1_Continue
 
 		ADD EAX, 32
 		MOV [ESI+EDX], AL
@@ -206,24 +208,36 @@ CleanStr PROC
 	CleanStr_L1:
 		
 		MOV AL, [ESI+EBX]
+		PUSH EAX
+		call IsAlpha
 
-		; B Check if the char is less than A (041h)
-		CMP AL, 041h
-		JB CleanStr_L1_Skip
-		; A Check if the char is more than z (07Ah)
-		CMP AL, 07Ah
-		JA CleanStr_L1_Skip
+		CMP AL, 1
+		JE CleanStr_L1_AddChar
+		CMP AH, 1
+		JE CleanStr_L1_AddChar
+		
 
-		; C Check if the char is less than Z (05Ah)
-		CMP AL, 05Ah
-		JBE ClearStr_L1_AddChar
-		; D Check if the char is more than a (061h)
-		CMP AL, 061h
-		JAE ClearStr_L1_AddChar
+		COMMENT ?
+			; B Check if the char is less than A (041h)
+			CMP AL, 041h
+			JB CleanStr_L1_Skip
+			; A Check if the char is more than z (07Ah)
+			CMP AL, 07Ah
+			JA CleanStr_L1_Skip
 
+			; C Check if the char is less than Z (05Ah)
+			CMP AL, 05Ah
+			JBE ClearStr_L1_AddChar
+			; D Check if the char is more than a (061h)
+			CMP AL, 061h
+			JAE ClearStr_L1_AddChar
+		?
+
+		POP EAX
 		JMP CleanStr_L1_Skip
 
-		ClearStr_L1_AddChar:
+		CleanStr_L1_AddChar:
+		POP EAX
 		MOV [temp_string+EDX], AL
 		INC EDX
 
@@ -287,5 +301,41 @@ PrintString PROC
 	POP EDX
 	ret
 PrintString ENDP
+
+IsAlpha PROC
+; Returns true if a character is a letter A-Z or a-z
+; Recieves: The character in AL
+; Returns: 1 in AL if lowercase, 1 in AH if uppercase, 0 in both in non-alpha character
+; Requires: 
+
+	; B Check if the char is less than A (041h)
+	CMP AL, 'A'
+	JB IsAlpha_Return_0
+	; A Check if the char is more than z (07Ah)
+	CMP AL, 'z'
+	JA IsAlpha_Return_0
+
+	; C Check if the char is less than Z (05Ah)
+	CMP AL, 'Z'
+	JBE IsAlpha_Return_Upper
+	; D Check if the char is more than a (061h)
+	CMP AL, 'a'
+	JAE IsAlpha_Return_Lower
+
+	IsAlpha_Return_Lower:
+		MOV EAX, 0
+		MOV AL, 1
+		JMP IsAlpha_Exit
+	IsAlpha_Return_Upper:
+		MOV EAX, 0
+		MOV AH, 1
+		JMP IsAlpha_Exit
+	IsAlpha_Return_0:
+		MOV EAX, 0
+
+	IsAlpha_Exit:
+	ret
+
+IsAlpha ENDP
 
 END main	; end of source code
