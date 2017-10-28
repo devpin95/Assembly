@@ -58,7 +58,7 @@ main PROC
 	; Check if the user entered 4
 	; If user_selection == 4
 	CMP EAX, 4
-	JE Option5
+	JE Option4
 
 	; Check if the user entered 5
 	; If user_selection == 5
@@ -83,10 +83,12 @@ main PROC
 		MOV ECX, user_string_length
 		call Clrscr
 		call CleanStr
-		MOV user_string_length, EBX
+		MOV user_string_length, EDX
 		JMP Beginning
 	Option4:
 		call Clrscr
+		MOV ESI, OFFSET user_string
+		MOV EDX, user_string_length
 		call IsPalindrome
 		JMP Beginning
 	Option5:
@@ -113,7 +115,7 @@ PrintMenu PROC
 		'1. Enter a string', 0Ah, 0Dh,
 		'2. Convert the string to lower case', 0Ah, 0Dh,
 		'3. Remove all non-letter elements', 0Ah, 0Dh,
-		'4. ', 0Ah, 0Dh,
+		'4. Palindrome Test', 0Ah, 0Dh,
 		'5. Print the string', 0Ah, 0Dh,
 		'6. Quit', 0Ah, 0Dh, 0
 
@@ -191,7 +193,7 @@ ToLower ENDP
 CleanStr PROC
 ; Removes all non-letter characters from a string
 ; Receives: address of the string in ESI, length of the string in ECX
-; Returns: the cleaned string at the address passed in through ESI
+; Returns: the cleaned string at the address passed in through ESI, length of the new string in EDX
 	.data
 		temp_string BYTE 51 DUP(0)			; A string to hold the string without special chars
 
@@ -257,7 +259,7 @@ CleanStr PROC
 		MOV [ESI + EBX], AL
 	LOOP CleanStr_L2
 
-	POP EDX
+	POP EBX
 
 	DontDo:
 	MOV EBX, 0
@@ -265,15 +267,88 @@ CleanStr PROC
 CleanStr ENDP
 
 IsPalindrome PROC
+; Returns true if the given string is a palindrome
+; Receives: address of the string in ESI, length of the string in EDX
+; Returns: 1 in AL if true, or 0 in AL if false
+; Requires: 
+
 	.data
-		ttl3 BYTE "****Is Palindrome", 0dh, 0ah, 0
+	spaceless_temp_string BYTE 51 DUP(0)
+	is_true BYTE "The string is a palindrome", 0
+	is_false BYTE "The string is not a palindrome", 0
 
 	.code
+
+	CMP EDX, 0
+	JE IsAPalindrome
+
+	;PUSH EDX
+
+	MOV ECX, EDX
+	SUB ECX, 1
+	MOV EDX, 0
+
+	IsPalindrome_RemoveSpace:
+		MOV AL, [ESI+ECX]
+		CMP AL, 020h
+		JE skip_space
+
+		MOV [spaceless_temp_string+EDX], AL
+		INC EDX
+
+		skip_space:
+	LOOP IsPalindrome_RemoveSpace
+
 	PUSH EDX
-	MOV EDX, OFFSET ttl3
+	MOV AL, [ESI]
+	CMP AL, 020h
+	JE skip_space_last
+
+	MOV [spaceless_temp_string+EDX], AL
+	INC EDX
+	skip_space_last:
+
+	MOV [spaceless_temp_string+EDX], 0
+
+	MOV EDX, OFFSET spaceless_temp_string
 	call WriteString
+	call Crlf
 
 	POP EDX
+	MOV EBX, 0
+	;SUB EDX, 1
+
+	IsPalindrome_L1:
+		MOV AL, [spaceless_temp_string+EDX]
+		MOV AH, [spaceless_temp_string+EBX]
+		CMP AL, AH
+		JNE NotAPalindrome
+
+		INC EBX
+		DEC EDX
+
+		CMP EBX, EDX
+		JA IsAPalindrome
+
+	LOOP IsPalindrome_L1
+	JMP IsAPalindrome
+
+	NotAPalindrome:
+		MOV EAX, 0
+		MOV EDX, OFFSET is_false
+		call WriteString
+		call Crlf
+		call Crlf
+		JMP get_out
+	IsAPalindrome:
+		MOV EAX, 1
+		MOV EDX, OFFSET is_true
+		call WriteString
+		call Crlf
+		call Crlf
+	
+	get_out:
+	;POP EDX
 	ret
 IsPalindrome ENDP
 
@@ -310,17 +385,19 @@ IsAlpha PROC
 
 	; B Check if the char is less than A (041h)
 	CMP AL, 'A'
-	JB IsAlpha_Return_0
+	JB IsAlpha_Return_0								; Jump if al < 'A'
 	; A Check if the char is more than z (07Ah)
 	CMP AL, 'z'
-	JA IsAlpha_Return_0
+	JA IsAlpha_Return_0								; Jump if al > 'z'
 
 	; C Check if the char is less than Z (05Ah)
 	CMP AL, 'Z'
-	JBE IsAlpha_Return_Upper
+	JBE IsAlpha_Return_Upper						; Jump if al <= 'Z'
 	; D Check if the char is more than a (061h)
 	CMP AL, 'a'
-	JAE IsAlpha_Return_Lower
+	JAE IsAlpha_Return_Lower						; Jump if AL >= 'a'
+
+	JMP IsAlpha_Return_0
 
 	IsAlpha_Return_Lower:
 		MOV EAX, 0
