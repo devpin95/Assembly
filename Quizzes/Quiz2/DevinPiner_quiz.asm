@@ -1,4 +1,5 @@
-; Program template
+; Author: Devin Piner
+; Quiz #5?
 
 Include Irvine32.inc
 
@@ -207,22 +208,22 @@ PrintGrade PROC
 		ROL EAX, 4							; move the text color up 4 bits
 		ADD AL, bg_color					; move the bg color into the bottom 4 bits
 
-		call SetTextColor
+		call SetTextColor					; Set the color scheme
 
-		POP EAX
-		ROL EAX, 16
+		POP EAX								; restore the register
+		ROL EAX, 16							; move the scores back to AX, AL stores the letter grade
 		call WriteChar
 
-		call ResetConsoleColors
+		call ResetConsoleColors				; Reset the color scheme
 
-		MOV EDX, OFFSET right_paren
+		MOV EDX, OFFSET right_paren			; Print the right parenthesis
 		call WriteString
 
-		call Crlf
-		POP EDX
+		call Crlf							; go to the next line
+		POP EDX								; Restore EDX to its iteration value
 
-		INC current_row
-		INC EDX
+		INC current_row						; keep track of what line we're on
+		INC EDX								; increment the iterator
 	LOOP L1
 
 	ret
@@ -244,6 +245,15 @@ AssignColor PROC
 	temp_number_grade BYTE 0
 
 .code
+
+	; In AssignColor, we need to assign a text color and background color based on grade. We will
+	; iterate through each element and test the score, which is in AH. Based on the value in AH, 
+	; we will assign the colors scheme. To do this, we will rotate the register so that the most
+	; significant byte is in AH and the next byte is in AL. We will store the text color in AH
+	; and the background color in AL, then rotate the register back into it's correct order:
+	; --Top Byte--				   -AH-	------AL------
+	; |Text color|Background color|score|letter grade|
+
 	MOV ECX, EAX
 	MOV EDX, 0
 
@@ -254,44 +264,50 @@ AssignColor PROC
 		ROL EAX, 16							; Rotate everything to the right, the most significant byte is now in AH
 											; the next byte is in AL
 
-		CMP temp_number_grade, 60
+		CMP temp_number_grade, 60			; If grade < 60
 		JB F_grade
-		CMP temp_number_grade, 70
+		CMP temp_number_grade, 70			; If grade < 70
 		JB D_grade
-		CMP temp_number_grade, 80
+		CMP temp_number_grade, 80			; If grade < 80
 		JB C_grade
-		CMP temp_number_grade, 100
+		CMP temp_number_grade, 100			; If grade <= 100, A & B have the same color scheme, so we skip < 90
 		JBE AB_grade
 		
 		; AH = text color
 		; AL = BG color
 		F_grade:
-			MOV AL, 4
-			MOV AH, 0
+			MOV AL, 4						; Red in top byte
+			MOV AH, 0						; black in second byte
 			JMP Continue_loop
 		D_grade:
-			MOV AL, 0
-			MOV AH, 14
+			MOV AL, 0						; Back in top byte
+			MOV AH, 14						; yellow in second byte
 			JMP Continue_loop
 		C_grade:
-			MOV AL, 14
-			MOV AH, 0
+			MOV AL, 14						; yellow in top byte
+			MOV AH, 0						; black in second byte
 			JMP Continue_loop
 		AB_grade:
-			MOV AL, 2
-			MOV AH, 0
+			MOV AL, 2						; green in top byte
+			MOV AH, 0						; balck in second byte
 			JMP Continue_loop
 
 		Continue_loop: 
-		ROL EAX, 16
-		MOV [EBX+EDX*4], EAX
-		INC EDX
+		ROL EAX, 16							; Rotate he register so that the colors are at the top of the register
+		MOV [EBX+EDX*4], EAX				; Put the new element with it's color scheme back into the array
+		INC EDX								; Increment the iterator
 	LOOP L1
 
 	ret
 AssignColor ENDP
 
 ResetConsoleColors PROC
+; Reset the window color scheme back to gray text on black background
+; Receives:
+; Returns: 
+; Requires: 
+
+	; ResetConsoleColors uses the syntax for Irvine SetTextColor as defined by the textbook
 	PUSH EAX
 		MOV EAX, lightgray+(black*16)
 		call SetTextColor
