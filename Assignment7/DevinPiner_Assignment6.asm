@@ -8,8 +8,10 @@ INCLUDE Irvine32.inc
 .data
 	;{your variables are to be defined here}
 	MAX_STRING_LENGTH = 50d
-	user_string BYTE 0 DUP(51)
+	user_string BYTE 51 DUP(0)
 	user_string_length BYTE 0
+	user_key BYTE 51 DUP(0)
+	user_key_length BYTE 0
 
 
 .data?
@@ -20,9 +22,12 @@ INCLUDE Irvine32.inc
 main PROC	
 	;{executable code here}
 
+	Error:
+		call Clrscr
 	Beginning:
 
 	MOV EDX, OFFSET user_string
+	MOV EBX, OFFSET user_key
 	call PrintMenu
 
 	call ReadDec
@@ -30,9 +35,9 @@ main PROC
 	; Check that the user input is within the menu range
 	; If user_selection > 6 || user_selection < 1
 	CMP EAX, 6
-	JA Beginning		;EAX > 6
+	JA Error		;EAX > 6
 	CMP EAX, 1
-	JB Beginning		;EAX < 1
+	JB Error		;EAX < 1
 
 	; Check if the user wants to exit
 	; If user_selection == 5
@@ -71,14 +76,21 @@ main PROC
 	Option2:
 		; Read String (phrase)
 		call Clrscr
+		MOV EDX, OFFSET user_key
+		MOV ECX, MAX_STRING_LENGTH
+		call EnterAString
+		MOV user_key_length, AL
+		call Clrscr
 		JMP Beginning
 	Option3:
 		; Encrypt
 		call Clrscr
+		call Encrypt
 		JMP Beginning
 	Option4:
 		; Decrypt
 		call Clrscr
+		call Decrypt
 		JMP Beginning
 	Option5:
 		; print string
@@ -93,7 +105,9 @@ main ENDP	; end main procedure
 
 PrintMenu PROC
 	.data
-		top BYTE "=========================================", 0Ah, 0Dh, 0
+		top BYTE	"=========================================", 0Ah, 0Dh,
+					"   Key: ", 0
+		phrase BYTE "   Phrase: ", 0
 		menu BYTE	"=========================================", 0Ah, 0Dh,
 					"1. Enter a Key" , 0Ah, 0Dh,
 					"2. Enter a String", 0Ah, 0Dh,
@@ -109,6 +123,13 @@ PrintMenu PROC
 	call WriteString
 
 	POP EDX
+	call WriteString
+	call Crlf
+
+	MOV EDX, OFFSET phrase
+	call WriteString
+
+	MOV EDX, EBX
 	call WriteString
 	call Crlf
 
@@ -143,21 +164,21 @@ ToUpper PROC
 	MOV EDX, 0
 
 	; loop through the string
-	ToLower_L1:
+	ToUpper_L1:
 		MOV AL, BYTE PTR [ESI+EDX]			; Mov the first char of the string into EAX
 		PUSH EAX							; Save the letter because IsAlpha will erase it
 		call IsAlpha						; check if the character is a letter
 
-		CMP AH, 1							; If AH is 1, it is a lowercase letter
+		CMP AL, 1							; If AH is 1, it is a lowercase letter
 		POP EAX								; POP the letter out so that if it is uppercase we can use it
-		JNE ToLower_L1_Continue				; If AH != 1 go to the next loop iteration
+		JNE ToUpper_L1_Continue				; If AH != 1 go to the next loop iteration
 
-		ADD EAX, 32d						; If we're here, the letter is uppercase. Add 32 to make it lowercase
-		MOV [ESI+EDX], AL					; No put the new lowercase letter into the stri ng
+		SUB EAX, 32d						; If we're here, the letter is lowercase. subtract 32 to make it lowercase
+		MOV [ESI+EDX], AL					; No put the new uppercase letter into the string
 
-		ToLower_L1_Continue:
+		ToUpper_L1_Continue:
 		INC EDX								; Increment the index
-	LOOP ToLower_L1
+	LOOP ToUpper_L1
 
 	; Restore the registers
 	POP EAX
@@ -232,7 +253,30 @@ EnterAString PROC
 	POP EDX
 	call ReadString
 
+	; Receives: address of a string in ESI, string length in ECX
+	MOV ESI, EDX
+	MOV ECX, EAX
+	call ToUpper
+
 	ret
 EnterAString ENDP
+
+Encrypt PROC
+	.data
+		stump BYTE "ENCRYPT!!!", 0Ah, 0Dh, 0
+	.code
+		MOV EDX, OFFSET stump
+		call WriteString
+	ret
+Encrypt ENDP
+
+Decrypt PROC
+	.data
+		stump1 BYTE "Decryptomaniac", 0Ah, 0Dh, 0
+	.code
+		MOV EDX, OFFSET stump1
+		call WriteString
+	ret
+Decrypt ENDP
 
 END main	; end of source code
