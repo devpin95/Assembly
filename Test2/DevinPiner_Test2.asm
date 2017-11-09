@@ -73,19 +73,76 @@ main PROC
 
 	start_game:
 		MOV EDX, OFFSET current_string_guesses
-		MOVZX ECX, [strings_length]
+		MOVZX ECX, current_string_length
 		
 		call Clrscr
 
 		call PrintGuesses
+		call Crlf
+		call Crlf
+		MOV EDX, current_string
+		call WriteString
+		MOV EAX, ECX
+		call Crlf
+		call WriteDec
 		call Crlf
 
 		MOV AL, letter_guesses
 		MOV AH, word_guesses
 		call PrintMainMenu
 
+		call ReadDec
+
+		; Check that the user input is within the menu range
+		; If user_selection > 6 || user_selection < 1
+		;CMP EAX, 6
+		;JA Error		;EAX > 6
+		;CMP EAX, 1
+		;JB Error		;EAX < 1
+
+		; Check if the user wants to exit
+		; If user_selection == 4
+		CMP EAX, 4
+		JE Ending
+
+		; Check if the user entered 1
+		; If user_selection == 1
+		CMP EAX, 1
+		JE Option1
+
+		; Check if the user entered 2
+		; If user_selection == 2
+		CMP EAX, 2
+		JE Option2
+
+		; Check if the user entered 3
+		; If user_selection == 3
+		CMP EAX, 3
+		JE Option3
+
+		Option1:
+			; Guess a letter
+			call Clrscr
+			MOV EDX, OFFSET current_string_guesses
+			MOVZX ECX, current_string_length
+			call PrintGuesses
+			call Crlf
+			call Crlf
+			MOV EDX, current_string
+			MOV EBX, OFFSET current_string_guesses
+			MOVZX ECX, current_string_length
+			call GuessALetter
+			jmp start_game
+		Option2:
+			; Guess a word
+			jmp start_game
+		Option3:
+			; Encrypt
+			jmp start_game
+
 	call WaitMsg
 
+	Ending:
 exit
 main ENDP	; end main procedure
 
@@ -105,7 +162,7 @@ PickGameString PROC
 ; Receives: the range starting at 0 in EBX
 	call Randomize
 	;PUSH EAX
-	MOV EAX, 0ffffh
+	MOV EAX, 00FFFFFFFh
 	MOV EDX, 0
 	call RandomRange
 
@@ -122,6 +179,10 @@ PrintGuesses PROC
 .data
 .code
 	MOV EBX, 0
+	MOV AL, 20h
+	call WriteChar
+	call WriteChar
+	call WriteChar
 	L1:
 		MOV AL, [EDX+EBX]
 		call WriteChar
@@ -137,7 +198,9 @@ PrintMainMenu PROC
 	menu1 BYTE "1. Guess a letter (", 0
 	menu2 BYTE "/11)", 0Ah, 0Dh, 0
 	menu3 BYTE "2. Guess the word (", 0
-	menu4 BYTE "/3)", 0Ah, 0Dh, "->", 0
+	menu4 BYTE "/3)", 0Ah, 0Dh, 
+				"4. Exit", 0Ah, 0Dh,
+				"->", 0
 .code
 	MOV EDX, OFFSET menu1
 	call WriteString
@@ -155,5 +218,32 @@ PrintMainMenu PROC
 	call WriteString
 	ret
 PrintMainMenu ENDP
+
+GuessALetter PROC
+.data
+	prompt BYTE "Guess a letter", 0Ah, 0Dh, "->", 0
+	char BYTE 0
+.code
+	MOV EDX, OFFSET prompt
+	call WriteString
+	call ReadChar
+
+	MOV char, AL
+
+	MOV ESI, 0
+
+	L1:
+		MOV AL, [EDX+ESI]
+		CMP AL, char
+		JNE Continue
+
+		MOV [EBX+ESI], AL
+
+		Continue:
+		INC ESI
+	LOOP L1
+
+	ret
+GuessALetter ENDP
 
 END main	; end of source code
