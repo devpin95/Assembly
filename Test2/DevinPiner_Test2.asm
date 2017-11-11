@@ -127,67 +127,54 @@ main PROC
 
 		call ReadDec									; Get the menu choice from the user
 
-		; Check that the user input is within the menu range
-		; If user_selection > 6 || user_selection < 1
-		;CMP EAX, 6
-		;JA Error		;EAX > 6
-		;CMP EAX, 1
-		;JB Error		;EAX < 1
-
-		; Check if the user wants to exit
-		; If user_selection == 4
-		CMP EAX, 4
+		CMP EAX, 4										; Check if the user wants to exit: user_selection == 4
 		JE GetOut
 
-		; Check if the user entered 1
-		; If user_selection == 1
-		CMP EAX, 1
+		CMP EAX, 1										; Check if the user entered 1 (guess a letter): user_selection == 1
 		JE Option1
 
-		; Check if the user entered 2
-		; If user_selection == 2
-		CMP EAX, 2
+		CMP EAX, 2										; Check if the user entered 2 (guess a word):  user_selection == 2
 		JE Option2
 
-		; Check if the user entered 3
-		; If user_selection == 3
-		CMP EAX, 3
+		CMP EAX, 3										; Check if the user entered 3: user_selection == 3
 		JE Option3
 
 		Option1:
 			; Guess a letter
 			call Clrscr
 
-			CMP letter_guesses, 0
+			CMP letter_guesses, 0						; If there are no more letter guesses left, just skip this options
 			JE start_game
 
-			MOV EDX, OFFSET current_string_guesses
-			MOVZX ECX, current_string_length
-			MOV CH, correct_guesses
-			MOV EBX, OFFSET guessed_letters
-			MOV AL, LETTER_GUESS_MAX
-			call PrintGuesses
-			call Crlf
-			call Crlf
+														; Get the registers ready to print out the guesses and letter board
+			MOV EDX, OFFSET current_string_guesses		; put the address of the guessed letters into EDX
+			MOVZX ECX, current_string_length			; put the current game string length in ECX
+			MOV CH, correct_guesses						; put the number of correct guesses into CH
+			MOV EBX, OFFSET guessed_letters				; put the letter board address into EBX
+			MOV AL, LETTER_GUESS_MAX					; put the letter board length into AL
+			call PrintGuesses							; print out the guesses and letter board
+			call Crlf									; new line
+			call Crlf									; new line
 
-			MOV EAX, 0
-			call GetUserChar
+			MOV EAX, 0									; clear eax
+			call GetUserChar							; get the char from the user
 			
 			; Receives: offset of array in ESI, char in AL, array length in AH
 			; Returns: 1 in AH if letter is in the array, 0 if not 
-			MOV ESI, OFFSET guessed_letters
-			MOV AH, LETTER_GUESS_MAX
-			call CheckIfLetterUsed
+			MOV ESI, OFFSET guessed_letters				; put the address of the letter board in ESI
+			MOV AH, LETTER_GUESS_MAX					; put the length of the letter board in AH
+			call CheckIfLetterUsed						; check if the letter has already been guessed
 
-			MOVZX ESI, letter_guesses
-			DEC ESI
-			MOV [guessed_letters+ESI], AL
+			MOVZX ESI, letter_guesses					; put the number of letter guesses into ESI
+			DEC ESI										; dec esi to go to the next index
+			MOV [guessed_letters+ESI], AL				; put the user-entered char into the letter board using ESI as an index
 
-			CMP AH, 0
-			JE NotGuessed
+			CMP AH, 0									; If CheckIfLetterUsed returned 0 in AH, the letter has not been guessed
+			JE NotGuessed								; if the letter has been guessed, skip the rest of the stuff
 			jmp skip_checks
 
-			NotGuessed:
+			NotGuessed:									; If we're here, the letter has not been guessed yet
+			; get stuff ready for GuessALetter PROC
 			; Receives: String length in CL, guessed char in CH, game string in EDX, offset display string in EBX
 			; Returns: number of letter matches in CL
 			MOV EDX, current_string
@@ -195,19 +182,20 @@ main PROC
 			MOV CL, current_string_length
 			MOV CH, AL
 			call GuessALetter
-			ADD correct_guesses, CL
-
-			skip_checks:
+			ADD correct_guesses, CL						; GuessALetter returns the number of matches the char made
+														; so we need to add it to correct_guesses
+			skip_checks:								; When we get here, we have gone through the function and need to get ready for the next
 			call Clrscr
-			DEC letter_guesses
-			jmp start_game
+			DEC letter_guesses							; decremement the number of guesses
+			jmp start_game								; go back to the main menu
 
 		Option2:
 			; Guess a word
 			call Clrscr
 
+			; get stuff ready for GuessAString
 			; Receives: offset of the guess string in EDX, offset of the game string in EBX and length in AH
-			; Returns: 1 in AL if the strings a the same, 0 in AL if they are not the same
+			; Returns: 1 in AL if the strings are the same, 0 in AL if they are not the same
 			MOV EBX, current_string
 			MOV AH, current_string_length
 			MOV EDX, OFFSET current_guess
@@ -215,18 +203,18 @@ main PROC
 
 			call Clrscr
 
-			CMP AL, 1
-			JE WINNER
-			MOV EDX, OFFSET current_guess
+			CMP AL, 1							; if GuessAString returned 1, the string guessed matched
+			JE WINNER							; and the user won
+			MOV EDX, OFFSET current_guess		; otherwise, the strings didnt match and we need to tell the user
 			call WriteString
-			MOV EDX, OFFSET wrong_word
+			MOV EDX, OFFSET wrong_word			; print that the word was not correct
 			call WriteString
 
-			DEC word_guesses
-			jmp start_game
+			DEC word_guesses					; decremement the number of word guesses remaining
+			jmp start_game						; go back to the main menu
 
 		Option3:
-			; Encrypt
+			; print game stats
 			jmp start_game
 	
 	WINNER:
@@ -649,5 +637,12 @@ ResetGuessedLetter PROC
 
 	ret
 ResetGuessedLetter ENDP
+
+PrintGameStats PROC
+
+	call WaitMsg
+
+	ret
+PrintGameStats ENDP
 
 END main	; end of source code
