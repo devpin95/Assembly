@@ -1,7 +1,7 @@
-TITLE template.asm
-; Description: 
+TITLE DevinPiner_Test2.asm
+; Description: A game of hangman
 ; Author: Devin Piner 107543409
-; Date Created:
+; Date Created:	Nov. 8, 2017
 
 INCLUDE Irvine32.inc
 
