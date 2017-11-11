@@ -14,6 +14,7 @@ INCLUDE Irvine32.inc
 	LOSE BYTE "Sorry. You have no more guesses.", 0Ah, 0Dh, "The word was ", 0
 	wrong_letter BYTE " is not in the word", 0Ah, 0Dh, 0
 	wrong_word BYTE " is not the correct word", 0Ah, 0Dh, 0
+	games BYTE "Games: ", 0
 	games_won BYTE "Wins: ", 0
 	games_lost BYTE "Losses: ", 0
 
@@ -41,15 +42,15 @@ INCLUDE Irvine32.inc
 	string15 BYTE "tank", 0
 	string16 BYTE "fruit", 0
 	string17 BYTE "engine", 0
-	string18 BYTE "strangerthings", 0
+	string18 BYTE "demogorgan", 0
 	string19 BYTE "train", 0
 	strings DWORD string0, string1, string2, string3, string4, string5, string6,
 				 string7, string8, string9, string10, string11, string12, string13,
 				 string14, string15, string16, string17, string18, string19
-	strings_length BYTE 4, 5, 8, 5, 6, 6, 7, 7, 6, 6, 7, 5, 7, 12, 9, 4, 5, 6, 14, 5
-	guessed_letters BYTE LETTER_GUESS_MAX dup(0)
-	correct_guesses BYTE 0
-	TOTAL_STRINGS = 20
+	strings_length BYTE 4, 5, 8, 5, 6, 6, 7, 7, 6, 6, 7, 5, 7, 12, 9, 4, 5, 6, 10, 5
+	guessed_letters BYTE LETTER_GUESS_MAX dup(0)	; array of all letters guesses by the user
+	correct_guesses BYTE 0							; total number of correct guesses
+	TOTAL_STRINGS = 20								; const value of the total number of strings
 
 	; Game data
 	current_string DWORD 0							; The word the user has to guess
@@ -60,9 +61,9 @@ INCLUDE Irvine32.inc
 	word_guesses BYTE WORD_GUESS_MAX				; the total number of word guesses remaining
 
 	; Meta game data
-	total_games BYTE 0
-	total_wins BYTE 0
-	total_losses BYTE 0
+	total_games BYTE 0								; total number of games played in the session
+	total_wins BYTE 0								; total number of games won in the session
+	total_losses BYTE 0								; total number of games lost in the session
 
 .data?
 	;{used as necessary}
@@ -218,6 +219,7 @@ main PROC
 			call Clrscr
 			MOV AH, total_wins
 			MOV AL, total_losses
+			MOV CL, total_games
 			call PrintGameStats
 			call Clrscr
 			jmp start_game
@@ -243,11 +245,20 @@ main PROC
 		JMP Ending								; go to the ending
 
 	Ending:										; If we get here, we need to print the game status and ask the user if they want to play again
+	INC total_games								; increment the total number of games played
+
+	MOV EDX, OFFSET games						; print the total number of games played
+	call WriteString
+	MOVZX EAX, total_games
+	call WriteDec
+	call Crlf
+
 	MOV EDX, OFFSET games_won					; print the total number of games won
 	call WriteString
 	MOVZX EAX, total_wins
 	call WriteDec
 	call Crlf
+
 	MOV EDX, OFFSET games_lost					; print the total number of games lost
 	call WriteString
 	MOVZX EAX, total_losses
@@ -697,28 +708,41 @@ ResetGuessedLetter ENDP
 
 PrintGameStats PROC
 ; Prints out the stats for the session
-; Receives: total number of wins is AL, total number of losses in AH
+; Receives: total number of wins is AL, total number of losses in AH, total games played CL
 ; Returns:
 ; Requires:
 
 .data
-	w BYTE "Hangman!", 0Ah, 0Dh, "Wins: ", 0
+	g BYTE "Hangman!", 0Ah, 0Dh, "Games: ", 0
+	w BYTE "Wins: ", 0
 	l BYTE "Losses: ", 0
 .code
-	MOV EDX, OFFSET w
+	
+	MOV EDX, OFFSET g			; Print "Hangman!" "Games: "
 	call WriteString
-	PUSH EAX
-	MOVZX EAX, AH
-	call WriteDec
-	call Crlf
-	POP EAX
-	MOV EDX, OFFSET l
-	call WriteString
-	MOVZX EAX, AL
-	call WriteDec
-	call Crlf
 
-	call WaitMsg
+	PUSH EAX					; Save the register to print out the total games
+	MOVZX EAX, CL				; Extend the total number of games into EAX
+	call WriteDec				; print out the value
+	call Crlf					; new line
+	POP EAX						; restore the register so we can use wins and losses
+
+	MOV EDX, OFFSET w			; Print "Wins: "
+	call WriteString
+
+	PUSH EAX					; Save the register to print out the total wins
+	MOVZX EAX, AH				; Extend the total number of wins into EAX
+	call WriteDec				; print out the value
+	call Crlf					; new line
+	POP EAX						; restore the register so we can use losses
+
+	MOV EDX, OFFSET l			; Print "Losses: "
+	call WriteString
+	MOVZX EAX, AL				; Extend the total number of losses into EAX
+	call WriteDec				; print out the value
+	call Crlf					; new line
+
+	call WaitMsg				; ask the user to press enter before returning
 
 	ret
 PrintGameStats ENDP
