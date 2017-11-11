@@ -217,71 +217,83 @@ main PROC
 			; print game stats
 			jmp start_game
 	
-	WINNER:
+	WINNER:										; If we get here, the user has won the game
 		call Clrscr
-		MOV EDX, current_string
+		MOV EDX, current_string					; print out the game string
 		call WriteString
 		call Crlf
-		MOV EDX, OFFSET WIN
+		MOV EDX, OFFSET WIN						; print out that the user has won
 		call WriteString
 		call Crlf
-		INC total_wins
-		JMP Ending
-	LOSER:
+		INC total_wins							; increment the total number of wins for the session
+		JMP Ending								; go to the ending
+	LOSER:										; If we get here, the user has lost the game
 		call Clrscr
-		MOV EDX, OFFSET LOSE
+		MOV EDX, OFFSET LOSE					; print out that the user has lost
 		call WriteString
-		MOV EDX, current_string
+		MOV EDX, current_string					; print out the string so the user can see what it was
 		call WriteString
 		call Crlf
-		INC total_losses
-		JMP Ending
+		INC total_losses						; increment the total number of losses for the session
+		JMP Ending								; go to the ending
 
-	Ending:
-	MOV EDX, OFFSET games_won
+	Ending:										; If we get here, we need to print the game status and ask the user if they want to play again
+	MOV EDX, OFFSET games_won					; print the total number of games won
 	call WriteString
 	MOVZX EAX, total_wins
 	call WriteDec
 	call Crlf
-	MOV EDX, OFFSET games_lost
+	MOV EDX, OFFSET games_lost					; print the total number of games lost
 	call WriteString
 	MOVZX EAX, total_losses
 	call WriteDec
 	call Crlf
 
-	MOV EDX, OFFSET start_new_game
+	MOV EDX, OFFSET start_new_game				; prompt the user if they want to play another game or quit
 	call WriteString
-	call ReadChar
+	call ReadChar								; get the char and convert it to lowercase so that case doesnt matter
 	call CharToLower
-	CMP AL, 'y'
-	JE restart_game
+	CMP AL, 'y'									; y=play again, anything else is quit
+	JE restart_game								; go back to the beginning of the game
 
 	GetOut:
 exit
 main ENDP	; end main procedure
 
 Instructions PROC
+; Prints out the instruction for hangmane
+; Recieves:
+; Returns:
+; Requires:
 .data
 	words BYTE "Hangman!", 0Ah, 0Dh, "You have 11 attempts to guess what letters are in the word", 0Ah, 0Dh,
 				"and 3 attempts the guess the word. ", 0
 .code
 	MOV EDX, OFFSET words
 	call WriteString
-
 	ret
 Instructions ENDP
 
 PickGameString PROC
-; Returns a number from 0 - (EBX-1)
+; Generates a random number between 0 and(EBX-1)
 ; Receives: the range starting at 0 in EBX
-	call Randomize
-	;PUSH EAX
-	MOV EAX, 00FFFFFFFh
-	MOV EDX, 0
-	call RandomRange
+; Returns: 0-(EBX-1) in EAX
+; Requires:
 
-	DIV EBX
-	MOV EAX, EDX
+	; To generate the random number as required by the specification, we get a really big number
+	; and divide it by the number of string, then use the mod as the index to the array of string.
+	; To get the modulus, use EAX and EDX to do 32-bit division. The quotient will be returned
+	; in EAX and the remainder (the number we want) will be returned in EDX. The specification
+	; didnt say how big the number had to be, so I just made a 32-bit size number with 0 as the
+	; most significant byte so that it wont be negative
+
+	call Randomize							; seed it
+	MOV EAX, 00FFFFFFFh						; make the real big number
+	MOV EDX, 0								; put 0 in EDX so that it isnt sign
+	call RandomRange						; get a random number between 0 and EAX (the really big number)
+
+	DIV EBX									; EBX is storing the divisor, so DIV will do EDX:EAX/EBX
+	MOV EAX, EDX							; EAX (quotient), EDX (remainder)
 
 	ret
 PickGameString ENDP
@@ -290,6 +302,8 @@ PrintGuesses PROC
 ; Prints out the guessed letters for the current string
 ; Receives: offset of guesses string in EDX, length of the string in CL, number of correct letters in CH, 
 ;			offset of guessed letters in EBX, number of guessed letters in AL
+; Returns:
+; Requires:
 
 .data
 	left BYTE "(", 0
@@ -298,75 +312,96 @@ PrintGuesses PROC
 	left1 BYTE "[ ", 0
 	right1 BYTE "]", 0
 .code
-	PUSH EAX
-	PUSH EBX
-	PUSH ECX
-	MOVZX ECX, CL
-	MOV EBX, 0
-	MOV AL, 20h
+
+	; To print the guesses, we print out the guesses string filled in with the
+	; letters that were correctly guessed. Following the letters guessed is the
+	; number of correctly guessed letter out of the total number of letters in 
+	; the string (n/m). Then we print out the letter board, which displays all of
+	; the letters guessed by the user (not just the ones that were guessed correctly)
+
+	PUSH EAX								; Save EAX
+	PUSH EBX								; Save EBX
+	PUSH ECX								; Save ECX
+
+	MOVZX ECX, CL							; Extend the length of the guesses string to the rest of ECX to use in the loop
+	MOV EBX, 0								; Make EBX 0 to use as an index in the array
+
+	MOV AL, 20h								; Print out 3 spaces
 	call WriteChar
 	call WriteChar
 	call WriteChar
+
+	; Print out the correct guesses
 	L1:
-		MOV AL, [EDX+EBX]
+		MOV AL, [EDX+EBX]					; Put the letter into AL and print out
 		call WriteChar
-		MOV AL, 20h
+		MOV AL, 20h							; Print out a space to separate the letters
 		call WriteChar
-		INC EBX
+		INC EBX								; increment the index to the array
 		LOOP L1
 
-	POP ECX
+	POP ECX									; restore ECX so that we can get back the number of correct guesses
 
-	MOV EBX, 0
-	MOV AL, 20h
+	MOV EBX, 0								; make EBX 0 to use it as an index again
+
+	; Print out the number of correct letters out of the total length of the string
+	MOV AL, 20h								; print out 2 spaces
 	call WriteChar
 	call WriteChar
 
-	MOV EDX, OFFSET left
+	MOV EDX, OFFSET left					; Print out the left parenthesis
 	call WriteString
-	MOVZX EAX, CH
+	MOVZX EAX, CH							; Print out the number of correct guesses
 	call WriteDec
-	MOV EDX, OFFSET slash
+	MOV EDX, OFFSET slash					; Print out a /
 	call WriteString
-	MOVZX EAX, CL
+	MOVZX EAX, CL							; Print out length of the string
 	call WriteDec
-	MOV EDX, OFFSET right
+	MOV EDX, OFFSET right					; Print out he right parenthesis
 	call WriteString
 
-	call Crlf
+	call Crlf								; new line
 
-	MOV AL, 20h
+	; Print out the letter board (all the guesses made by the user)
+	MOV AL, 20h								; Print out 3 spaces
 	call WriteChar
 	call WriteChar
 	call WriteChar
-	MOV EDX, OFFSET left1
+
+	MOV EDX, OFFSET left1					; Print out the left square bracket
 	call WriteString
 
-	POP EBX
-	POP EAX
-	MOV EDX, EBX
-	MOVZX ECX, AL
-	MOV EBX, 0
+	POP EBX									; Restore EBX to get back the address of the letter board
+	POP EAX									; Restore EAX to get back the length of the letter board
+	MOV EDX, EBX							; PUT the address of the letter board into EDX so that we can use EBX as an index
+	MOVZX ECX, AL							; Put length of the letter board into ECX to use for the loop
+	MOV EBX, 0								; make EBX 0 to use it as an index again
 
 	L2:
-		MOV AL, [EDX+EBX]
-		CMP AL, 0
+		MOV AL, [EDX+EBX]					; Get the letter from the letter board
+		CMP AL, 0							; Check if it has been set
 		JE continue
 
-		call WriteChar
-		MOV AL, 20h
+		call WriteChar						; If the letter has been set, print it
+		MOV AL, 20h							; add a space after the letter
 		call WriteChar
 
 		continue:
-		INC EBX
+		INC EBX								; increment the index to the array
 	LOOP L2
-	MOV EDX, OFFSET right1
+
+	MOV EDX, OFFSET right1					; Print out the right square bracket
 	call WriteString
 
 	ret
 PrintGuesses ENDP
 
 PrintMainMenu PROC
+; Prints the main game menu
+; Receives:
+; Returns:
+; Requires:
+
 .data
 	menu1 BYTE "1. Guess a letter (", 0
 	menu2 BYTE "/11)", 0Ah, 0Dh, 0
@@ -375,19 +410,19 @@ PrintMainMenu PROC
 				"4. Exit", 0Ah, 0Dh,
 				"->", 0
 .code
-	MOV EDX, OFFSET menu1
+	MOV EDX, OFFSET menu1				; Print out "1. Guess a letter ("
 	call WriteString
-	PUSH EAX
-	MOVZX EAX, AL
+	PUSH EAX							; save EAX so that we can extend each number into the whole register
+	MOVZX EAX, AL						; Print out the number of letter guesses left
 	call WriteDec
-	POP EAX
-	MOVZX EAX, AH
-	MOV EDX, OFFSET menu2
+	POP EAX								; restore the register and extend the number of word guesses left
+	MOVZX EAX, AH						
+	MOV EDX, OFFSET menu2				; Print out "/11)"
 	call WriteString
-	MOV EDX, OFFSET menu3
+	MOV EDX, OFFSET menu3				; Print out "2. Guess the word ("
 	call WriteString
-	call WriteDec
-	MOV EDX, OFFSET menu4
+	call WriteDec						; Print out the number of word guesses left
+	MOV EDX, OFFSET menu4				; Print out "4. Exit ->", 0
 	call WriteString
 	ret
 PrintMainMenu ENDP
@@ -401,27 +436,31 @@ GuessALetter PROC
 	char BYTE 0
 	correct BYTE 0
 .code
-	; save the char entered by the user
-	MOV char, CH
-	MOV CH, 0
-	MOVZX ECX, CL
 
-	MOV ESI, 0
+	; To guess a letter, step through the string and count the number of times the chars match.
+	; Using the parallel strings (current_string & current_string_guesses ), for each matching
+	; char in current_string, copy that char into current_string_guesses at the same index
+
+	MOV char, CH							; save the char entered by the user so that we can use the register for other stuff
+	MOV CH, 0								; clear the register
+	MOVZX ECX, CL							; extend the string length to the rest of the register
+
+	MOV ESI, 0								; move 0 into ESI and use it as an index into the string
 
 	L1:
-		MOV AL, [EDX+ESI]
-		CMP AL, char
+		MOV AL, [EDX+ESI]					; pull out the char from the string
+		CMP AL, char						; compare it to the letter entered by the user
 		JNE Continue
 
-		MOV [EBX+ESI], AL
-		INC correct
+		MOV [EBX+ESI], AL					; if the characters match, add it to the current_string_guesses at the same index
+		INC correct							; Increment the total number of correct matches
 
 		Continue:
-		INC ESI
+		INC ESI								; Increment the index to the string
 	LOOP L1
 
-	MOV CL, correct
-	MOV correct, 0
+	MOV CL, correct							; Put the number of correct matches into CL to return it
+	MOV correct, 0							; reset the correct variable so that it is 0 the next time this proc is called
 	ret
 GuessALetter ENDP
 
@@ -431,13 +470,11 @@ CharToLower PROC
 ; Requires: 
 
 	
-	; To convert a string to lowercase, loop through the string and check what range
-	; the character lands in. More the current character into AL and call IsAlpha.
+	; To convert a char to lowercase, move the character into AL and call IsAlpha.
 	; IsAlpha will return 1 in AH if the character is lower case, 1 in AL if it is
 	; uppercase, or 0 in both if it is not a letter. If the character is a alpha letter
 	; check if it is an uppercase letter. If so, add 32 to the uppercase letter to 
-	; convert it to lowercase. Move that new letter into the current spot to "remove"
-	; the uppercase letter. For each non-letter character, skip to the next letter
+	; convert it to lowercase.
 
 	PUSH EAX							; Save the letter because IsAlpha will erase it
 	call IsAlpha						; check if the character is a letter
@@ -446,7 +483,7 @@ CharToLower PROC
 	POP EAX								; POP the letter out so that if it is uppercase we can use it
 	JNE continue
 
-	ADD EAX, 32d
+	ADD EAX, 32d						; Add 32 to the char to conver it to lowercase
 
 	continue:
 	ret
