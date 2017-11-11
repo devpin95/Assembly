@@ -9,8 +9,13 @@ INCLUDE Irvine32.inc
 	;{your variables are to be defined here}
 	
 	; Prompts
+	start_new_game BYTE "Continue? (y/n) ->", 0
 	WIN BYTE "You got the word!", 0
 	LOSE BYTE "Sorry. You have no more guesses.", 0Ah, 0Dh, "The word was ", 0
+	wrong_letter BYTE " is not in the word", 0Ah, 0Dh, 0
+	wrong_word BYTE " is not the correct word", 0Ah, 0Dh, 0
+	games_won BYTE "Wins: ", 0
+	games_lost BYTE "Losses: ", 0
 
 	; Game variables
 	LETTER_GUESS_MAX = 11						; the number of letter guesses to give the user
@@ -67,58 +72,60 @@ INCLUDE Irvine32.inc
 main PROC	
 	;{executable code here}
 
-	MOV EBX, TOTAL_STRINGS
-	call PickGameString
-	MOV EDX, [strings+EAX*4]
-	MOV current_string, EDX
-	MOV DL, [strings_length+EAX]
-	MOV current_string_length, DL
-
-	show_game_instructions:
+	show_game_instructions:						; show the game rules to the user
 		call Instructions
 		call WaitMsg
 		call Clrscr
 
+	restart_game:
+		call Clrscr
+		MOV EBX, TOTAL_STRINGS							; first, we need to pick the game string from the pool of strings
+		call PickGameString
+		MOV EDX, [strings+EAX*4]						; now that we have the string, put it into EDX and then into current_string to use
+		MOV current_string, EDX
+		MOV DL, [strings_length+EAX]					; we also need the length of the string, get it by using the same index and the parallel arrays
+		MOV current_string_length, DL
+
+		MOV EDX, OFFSET current_string_guesses			; now we need to reset the letter guesses before continuing
+		MOV ECX, 14										; we do this here so that when we restart the string is in the correct state
+		call ResetCurrentGuesses
+		MOV letter_guesses, LETTER_GUESS_MAX			; reset the number of letter guesses for the user
+		MOV word_guesses, WORD_GUESS_MAX				; reset the number of word guesses for the user
+		MOV EDX, OFFSET guessed_letters					; we also need to reset the letter board (the letters guessed by the user)
+		MOV ECX, LETTER_GUESS_MAX						; this array always has the same number of letters as the max number of guesses
+		call ResetGuessedLetter
+
 	start_game:
 
 		; check if the user has guessed all the letters correctly
-		MOV AL, correct_guesses
-		CMP AL, current_string_length
-		JE WINNER
+		MOV AL, correct_guesses							; before we continue, we need to check if the number of correct guesses
+		CMP AL, current_string_length					; is the same as the length of the string
+		JE WINNER										; If they are the same, the user has guessed all the letters and has won
 
 		; check how many letter and word guesses are left
-		MOV AL, letter_guesses
-		CMP AL, 0
+		MOV AL, letter_guesses							; Check if there are still letter guesses for the user
+		CMP AL, 0										; If there is more than 0 left, the user can still play
 		JA StillPlaying
-		MOV AL, word_guesses
-		CMP AL, 0
+		MOV AL, word_guesses							; If the user has no more letter guesses left, check the nunmber of word guesses
+		CMP AL, 0										; if the word and letter guesses are both 0, then the user has lost
 		JE LOSER
 
-		StillPlaying:
-		MOV EDX, OFFSET current_string_guesses
-		MOVZX ECX, current_string_length
-		MOV CH, correct_guesses
-		MOV EBX, OFFSET guessed_letters
-		MOV AL, LETTER_GUESS_MAX
-		
-		call Clrscr
+		StillPlaying:									; If we get here, the user still has guesses remaining
+		MOV EDX, OFFSET current_string_guesses			; put the address of the guessed letters into EDX
+		MOVZX ECX, current_string_length				; put the current game string length in ECX
+		MOV CH, correct_guesses							; put the number of correct guesses into CH
+		MOV EBX, OFFSET guessed_letters					; put the letter board address into EBX
+		MOV AL, LETTER_GUESS_MAX						; put the letter board length into AL
 
-		call PrintGuesses
-		call Crlf
-		call Crlf
-		;MOV EDX, current_string
-		;call WriteString
-		;MOV EAX, ECX
-		;call Crlf
-		;MOVZX EAX, current_string_length
-		;call WriteDec
-		;call Crlf
+		call PrintGuesses								; Print out the guesses and the letter board
+		call Crlf										; new line
+		call Crlf										; new line
 
-		MOV AL, letter_guesses
-		MOV AH, word_guesses
-		call PrintMainMenu
+		MOV AL, letter_guesses							; put the number of letter guesses left in AL for the menu
+		MOV AH, word_guesses							; put the number of word guesses left in AH for the menu
+		call PrintMainMenu								; Print the main menu
 
-		call ReadDec
+		call ReadDec									; Get the menu choice from the user
 
 		; Check that the user input is within the menu range
 		; If user_selection > 6 || user_selection < 1
@@ -130,7 +137,7 @@ main PROC
 		; Check if the user wants to exit
 		; If user_selection == 4
 		CMP EAX, 4
-		JE Ending
+		JE GetOut
 
 		; Check if the user entered 1
 		; If user_selection == 1
@@ -191,15 +198,30 @@ main PROC
 			ADD correct_guesses, CL
 
 			skip_checks:
+			call Clrscr
 			DEC letter_guesses
 			jmp start_game
 
 		Option2:
 			; Guess a word
+			call Clrscr
+
+			; Receives: offset of the guess string in EDX, offset of the game string in EBX and length in AH
+			; Returns: 1 in AL if the strings a the same, 0 in AL if they are not the same
+			MOV EBX, current_string
+			MOV AH, current_string_length
 			MOV EDX, OFFSET current_guess
-			MOVZX ECX, current_string_length
-			INC ECX
-			call ReadString
+			call GuessAString
+
+			call Clrscr
+
+			CMP AL, 1
+			JE WINNER
+			MOV EDX, OFFSET current_guess
+			call WriteString
+			MOV EDX, OFFSET wrong_word
+			call WriteString
+
 			DEC word_guesses
 			jmp start_game
 
@@ -215,6 +237,7 @@ main PROC
 		MOV EDX, OFFSET WIN
 		call WriteString
 		call Crlf
+		INC total_wins
 		JMP Ending
 	LOSER:
 		call Clrscr
@@ -223,10 +246,29 @@ main PROC
 		MOV EDX, current_string
 		call WriteString
 		call Crlf
+		INC total_losses
 		JMP Ending
 
 	Ending:
-	call WaitMsg
+	MOV EDX, OFFSET games_won
+	call WriteString
+	MOVZX EAX, total_wins
+	call WriteDec
+	call Crlf
+	MOV EDX, OFFSET games_lost
+	call WriteString
+	MOVZX EAX, total_losses
+	call WriteDec
+	call Crlf
+
+	MOV EDX, OFFSET start_new_game
+	call WriteString
+	call ReadChar
+	call CharToLower
+	CMP AL, 'y'
+	JE restart_game
+
+	GetOut:
 exit
 main ENDP	; end main procedure
 
@@ -476,10 +518,13 @@ GetUserChar PROC
 	p_guess_letter BYTE "Guess a letter", 0Ah, 0Dh, "->", 0
 
 .code
+	skip_carriage_return:					; for when the user just presses enter without a character
 	; Get the user char
 	MOV EDX, OFFSET p_guess_letter
 	call WriteString
 	call ReadChar
+	CMP AL, 0Dh
+	JE skip_carriage_return
 
 	; Print the char to the screen so that the user can see that they entered it correctly
 	call WriteChar
@@ -523,8 +568,86 @@ CheckIfLetterUsed PROC
 CheckIfLetterUsed ENDP
 
 GuessAString PROC
+; compares the strings passed in.
+; Receives: offset of the guess string in EDX, offset of the game string in EBX and length in AH
+; Returns: 1 in AL if the strings a the same, 0 in AL if they are not the same
+; Requires:
 
+.data
+	word_prompt BYTE "Guess a word", 0Ah, 0Dh, "->", 0
+.code
+
+	MOVZX ECX, AH
+	INC ECX
+	
+	PUSH EDX
+	MOV EDX, OFFSET word_prompt
+	call WriteString
+	POP EDX
+	call ReadString
+	DEC ECX
+	MOV AH, CL
+
+	CMP AH, AL
+	JNE NotSame
+	
+	MOV ESI, 0
+	MOVZX ECX, AH
+
+	L1:
+		MOV AL, [EDX+ESI]
+		MOV AH, [EBX+ESI]
+		CMP AL, AH
+		JNE NotSame
+		INC ESI
+	LOOP L1
+
+	;MOV AL, [EDX+ESI]
+	;MOV AH, [EBX+ESI]
+	;CMP AL, AH
+	;JNE NotSame
+
+	Same:
+	MOV AL, 1
+	JMP Return
+	NotSame:
+	MOV AL, 0
+	JMP Return
+
+	Return:
 	ret
 GuessAString ENDP
+
+ResetCurrentGuesses PROC
+; converts the guesses string back to all '_'
+; Receives: offset of guesses string in EDX, string length in ECX
+; Returns: the string converted to initial state
+; Requires: 
+
+	MOV AL, '_'
+	L1:
+		MOV [EDX+ECX], AL
+	LOOP L1
+
+	MOV [EDX], AL
+
+	ret
+ResetCurrentGuesses ENDP
+
+ResetGuessedLetter PROC
+; converts the guessed letters string back to all 0
+; Receives: offset of guesses string in EDX, string length in ECX
+; Returns: the string converted to initial state
+; Requires: 
+
+	MOV AL, 0
+	L1:
+		MOV [EDX+ECX], AL
+	LOOP L1
+
+	MOV [EDX], AL
+
+	ret
+ResetGuessedLetter ENDP
 
 END main	; end of source code
