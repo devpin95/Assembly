@@ -215,6 +215,11 @@ main PROC
 
 		Option3:
 			; print game stats
+			call Clrscr
+			MOV AH, total_wins
+			MOV AL, total_losses
+			call PrintGameStats
+			call Clrscr
 			jmp start_game
 	
 	WINNER:										; If we get here, the user has won the game
@@ -406,7 +411,8 @@ PrintMainMenu PROC
 	menu1 BYTE "1. Guess a letter (", 0
 	menu2 BYTE "/11)", 0Ah, 0Dh, 0
 	menu3 BYTE "2. Guess the word (", 0
-	menu4 BYTE "/3)", 0Ah, 0Dh, 
+	menu4 BYTE "/3)", 0Ah, 0Dh,
+				"3. Game Stats", 0Ah, 0Dh,
 				"4. Exit", 0Ah, 0Dh,
 				"->", 0
 .code
@@ -539,25 +545,25 @@ GetUserChar PROC
 ; Gets a char from the user
 ; Recieves:
 ; Returns: user-entered char in AL, converted to lowercase
+; Requirs:
+
 .data
 	p_guess_letter BYTE "Guess a letter", 0Ah, 0Dh, "->", 0
 
 .code
 	skip_carriage_return:					; for when the user just presses enter without a character
-	; Get the user char
-	MOV EDX, OFFSET p_guess_letter
+	MOV EDX, OFFSET p_guess_letter			; Print out the prompt
 	call WriteString
-	call ReadChar
-	CMP AL, 0Dh
-	JE skip_carriage_return
+	call ReadChar							; Get the user char
+	CMP AL, 0Dh								; Compare the char with the carriage return char
+	JE skip_carriage_return					; If it is the carriage return char, start again because itll mess stuff up later
 
-	; Print the char to the screen so that the user can see that they entered it correctly
-	call WriteChar
-	PUSH EAX
-	MOV EAX, 100
-	call Delay
-	POP EAX
-	call CharToLower
+	call WriteChar							; Print the char to the screen so that the user can see that they entered it correctly
+	PUSH EAX								; save the register
+	MOV EAX, 100							; create a delay so that the user actually sees it before the screen is cleared
+	call Delay								; do the delay
+	POP EAX									; Restore the register so that we get the char back
+	call CharToLower						; Convert the char to lowercase so that we can compare it to the string
 
 	ret
 GetUserChar ENDP
@@ -571,24 +577,31 @@ CheckIfLetterUsed PROC
 .data
 	flg BYTE 0
 .code
-	MOV flg, 0
-	MOVZX ECX, AH
-	MOV EBX, 0			; iterator
+
+	; We check if a letter is used so that other functions wont have the chance to count it
+	; more than once. To check if a letter has been used, we iterate through the current_string_guesses
+	; array and compare each letter to the current letter entered by the user. If any of the chars
+	; match, we return true, otherwise we continue through until we reach the end and know if the
+	; char has been guessed before
+
+	MOV flg, 0						; reset the flag so that it doesnt carry over from the last time it ran
+	MOVZX ECX, AH					; Extend the array length into ECX to use in the loop
+	MOV EBX, 0						; Make EBX 0 to use as an index into the array
 
 	L1:
-		MOV AH, [ESI+EBX]
-		CMP AH, AL
+		MOV AH, [ESI+EBX]			; pull out the letter from current_string_guesses
+		CMP AH, AL					; compare it to the letter ented by the user
 		JNE ContinueL1
 
-		MOV flg, 1
-		JMP BreakL1
+		MOV flg, 1					; if we get here, the chars matched, so we set the flag and break out of the loop
+		JMP BreakL1					; break
 
-		ContinueL1:
-		INC EBX
+		ContinueL1:					; If we get here, the chars didnt match so we continue the loop
+		INC EBX						; increment the index
 	LOOP L1
 
-	BreakL1:
-	MOV AH, flg
+	BreakL1:						; Break
+	MOV AH, flg						; Return the value of the flag (1=true, 0=false)
 	ret
 CheckIfLetterUsed ENDP
 
@@ -602,44 +615,44 @@ GuessAString PROC
 	word_prompt BYTE "Guess a word", 0Ah, 0Dh, "->", 0
 .code
 
-	MOVZX ECX, AH
-	INC ECX
-	
-	PUSH EDX
-	MOV EDX, OFFSET word_prompt
-	call WriteString
-	POP EDX
-	call ReadString
-	DEC ECX
-	MOV AH, CL
+	; To guess a string, we compare the string entered by the user to the game string
+	; by stepping though each letter and comparing them. If any letter does not match
+	; we return false. If we get to the end of the strings without any mismatches, the
+	; strings must have match and we return true
 
-	CMP AH, AL
-	JNE NotSame
+	MOVZX ECX, AH					; Extend the game string length into ECX to user in the loop
+	INC ECX							; Increment ECX to capture the last char in the string
 	
-	MOV ESI, 0
-	MOVZX ECX, AH
+	PUSH EDX						; save EDX
+	MOV EDX, OFFSET word_prompt		; Print out the prompt to the user
+	call WriteString
+	POP EDX							; Restore the register to get back the address of the guesses string
+	call ReadString					; read the string into EDX, and the length of the user string into ECX
+	DEC ECX							; Decrement ECX to get the length of both strings to match (Readstring returns 1 more)
+	MOV AH, CL						; Move the new strings length into AH
+
+	CMP AH, AL						; Compare the length of both strings
+	JNE NotSame						; If they are not equal, we know the strings cant be the same so just return false
+	
+	MOV ESI, 0						; Otherwise, make ESI 0 to use as an index into both strings
+	MOVZX ECX, AH					; Extend the length of the strings into ECX to use in the loop
 
 	L1:
-		MOV AL, [EDX+ESI]
-		MOV AH, [EBX+ESI]
-		CMP AL, AH
-		JNE NotSame
-		INC ESI
+		MOV AL, [EDX+ESI]			; Pull the letter from the guessed string
+		MOV AH, [EBX+ESI]			; Pull the letter from the game string
+		CMP AL, AH					; Compare both the chars
+		JNE NotSame					; If they are not the same, return false
+		INC ESI						; Otherwise increment the index and continue the loop
 	LOOP L1
 
-	;MOV AL, [EDX+ESI]
-	;MOV AH, [EBX+ESI]
-	;CMP AL, AH
-	;JNE NotSame
-
-	Same:
-	MOV AL, 1
+	Same:							; If we get here, no chars we mismatched so the string matched
+	MOV AL, 1						; return true
 	JMP Return
-	NotSame:
-	MOV AL, 0
+	NotSame:						; If we get here, something didnt match
+	MOV AL, 0						; return false
 	JMP Return
 
-	Return:
+	Return:							; return
 	ret
 GuessAString ENDP
 
@@ -649,12 +662,16 @@ ResetCurrentGuesses PROC
 ; Returns: the string converted to initial state
 ; Requires: 
 
-	MOV AL, '_'
+	; To reset the current guesses string, we just iterate through the string
+	; and set each character back to "_", which indicates a 'hidden', or unknown character
+	; that the user has not yet guessed
+
+	MOV AL, '_'							; Put '_' into AL since we cant use an intermediate value here for some reason
 	L1:
-		MOV [EDX+ECX], AL
+		MOV [EDX+ECX], AL				; Reset the character
 	LOOP L1
 
-	MOV [EDX], AL
+	MOV [EDX], AL						; The loop didnt capture the first character so do it here
 
 	ret
 ResetCurrentGuesses ENDP
@@ -665,17 +682,41 @@ ResetGuessedLetter PROC
 ; Returns: the string converted to initial state
 ; Requires: 
 
-	MOV AL, 0
+	; To reset the guessed letters (letter board), iterate through the string and
+	; set each character back to 0, which indicates an empty element
+
+	MOV AL, 0						; Move 0 into AL to use in the loop
 	L1:
-		MOV [EDX+ECX], AL
+		MOV [EDX+ECX], AL			; reset the character
 	LOOP L1
 
-	MOV [EDX], AL
+	MOV [EDX], AL					; The loop didnt capture the first character so do it here
 
 	ret
 ResetGuessedLetter ENDP
 
 PrintGameStats PROC
+; Prints out the stats for the session
+; Receives: total number of wins is AL, total number of losses in AH
+; Returns:
+; Requires:
+
+.data
+	w BYTE "Hangman!", 0Ah, 0Dh, "Wins: ", 0
+	l BYTE "Losses: ", 0
+.code
+	MOV EDX, OFFSET w
+	call WriteString
+	PUSH EAX
+	MOVZX EAX, AH
+	call WriteDec
+	call Crlf
+	POP EAX
+	MOV EDX, OFFSET l
+	call WriteString
+	MOVZX EAX, AL
+	call WriteDec
+	call Crlf
 
 	call WaitMsg
 
