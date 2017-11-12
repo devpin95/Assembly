@@ -19,7 +19,7 @@ INCLUDE Irvine32.inc
 	games_lost BYTE "Losses: ", 0
 
 	; Game variables
-	LETTER_GUESS_MAX = 11						; the number of letter guesses to give the user
+	LETTER_GUESS_MAX = 10						; the number of letter guesses to give the user
 	WORD_GUESS_MAX = 3							; the number of word guesses to give the user
 	MAX_STRING_LENGTH = 15						; the length of the longest string + 1
 
@@ -215,14 +215,18 @@ main PROC
 			jmp start_game						; go back to the main menu
 
 		Option3:
-			; print game stats
-			call Clrscr
-			MOV AH, total_wins
-			MOV AL, total_losses
-			MOV CL, total_games
-			call PrintGameStats
-			call Clrscr
-			jmp start_game
+		call Clrscr
+		jmp start_game
+COMMENT ?
+	; print game stats
+	call Clrscr
+	MOV AH, total_wins
+	MOV AL, total_losses
+	MOV CL, total_games
+	call PrintGameStats
+	call Clrscr
+	jmp start_game
+?
 	
 	WINNER:										; If we get here, the user has won the game
 		call Clrscr
@@ -247,6 +251,7 @@ main PROC
 	Ending:										; If we get here, we need to print the game status and ask the user if they want to play again
 	INC total_games								; increment the total number of games played
 
+COMMENT ?
 	MOV EDX, OFFSET games						; print the total number of games played
 	call WriteString
 	MOVZX EAX, total_games
@@ -264,6 +269,7 @@ main PROC
 	MOVZX EAX, total_losses
 	call WriteDec
 	call Crlf
+?
 
 	MOV EDX, OFFSET start_new_game				; prompt the user if they want to play another game or quit
 	call WriteString
@@ -282,7 +288,7 @@ Instructions PROC
 ; Returns:
 ; Requires:
 .data
-	words BYTE "Hangman!", 0Ah, 0Dh, "You have 11 attempts to guess what letters are in the word", 0Ah, 0Dh,
+	words BYTE "Hangman!", 0Ah, 0Dh, "You have 10 attempts to guess what letters are in the word", 0Ah, 0Dh,
 				"and 3 attempts the guess the word. ", 0
 .code
 	MOV EDX, OFFSET words
@@ -420,7 +426,7 @@ PrintMainMenu PROC
 
 .data
 	menu1 BYTE "1. Guess a letter (", 0
-	menu2 BYTE "/11)", 0Ah, 0Dh, 0
+	menu2 BYTE "/10)", 0Ah, 0Dh, 0
 	menu3 BYTE "2. Guess the word (", 0
 	menu4 BYTE "/3)", 0Ah, 0Dh,
 				"3. Game Stats", 0Ah, 0Dh,
@@ -706,45 +712,47 @@ ResetGuessedLetter PROC
 	ret
 ResetGuessedLetter ENDP
 
-PrintGameStats PROC
-; Prints out the stats for the session
-; Receives: total number of wins is AL, total number of losses in AH, total games played CL
-; Returns:
-; Requires:
+COMMENT ?
+	PrintGameStats PROC
+	; Prints out the stats for the session
+	; Receives: total number of wins is AL, total number of losses in AH, total games played CL
+	; Returns:
+	; Requires:
 
-.data
-	g BYTE "Hangman!", 0Ah, 0Dh, "Games: ", 0
-	w BYTE "Wins: ", 0
-	l BYTE "Losses: ", 0
-.code
+	.data
+		g BYTE "Hangman!", 0Ah, 0Dh, "Games: ", 0
+		w BYTE "Wins: ", 0
+		l BYTE "Losses: ", 0
+	.code
 	
-	MOV EDX, OFFSET g			; Print "Hangman!" "Games: "
-	call WriteString
+		MOV EDX, OFFSET g			; Print "Hangman!" "Games: "
+		call WriteString
 
-	PUSH EAX					; Save the register to print out the total games
-	MOVZX EAX, CL				; Extend the total number of games into EAX
-	call WriteDec				; print out the value
-	call Crlf					; new line
-	POP EAX						; restore the register so we can use wins and losses
+		PUSH EAX					; Save the register to print out the total games
+		MOVZX EAX, CL				; Extend the total number of games into EAX
+		call WriteDec				; print out the value
+		call Crlf					; new line
+		POP EAX						; restore the register so we can use wins and losses
 
-	MOV EDX, OFFSET w			; Print "Wins: "
-	call WriteString
+		MOV EDX, OFFSET w			; Print "Wins: "
+		call WriteString
 
-	PUSH EAX					; Save the register to print out the total wins
-	MOVZX EAX, AH				; Extend the total number of wins into EAX
-	call WriteDec				; print out the value
-	call Crlf					; new line
-	POP EAX						; restore the register so we can use losses
+		PUSH EAX					; Save the register to print out the total wins
+		MOVZX EAX, AH				; Extend the total number of wins into EAX
+		call WriteDec				; print out the value
+		call Crlf					; new line
+		POP EAX						; restore the register so we can use losses
 
-	MOV EDX, OFFSET l			; Print "Losses: "
-	call WriteString
-	MOVZX EAX, AL				; Extend the total number of losses into EAX
-	call WriteDec				; print out the value
-	call Crlf					; new line
+		MOV EDX, OFFSET l			; Print "Losses: "
+		call WriteString
+		MOVZX EAX, AL				; Extend the total number of losses into EAX
+		call WriteDec				; print out the value
+		call Crlf					; new line
 
-	call WaitMsg				; ask the user to press enter before returning
+		call WaitMsg				; ask the user to press enter before returning
 
-	ret
-PrintGameStats ENDP
+		ret
+	PrintGameStats ENDP
+?
 
 END main	; end of source code
