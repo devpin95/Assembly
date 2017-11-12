@@ -1,0 +1,13 @@
+CAESAR CIPHER https://en.wikipedia.org/wiki/Caesar_cipher
+
+Key: Assembly Homework
+Phrase: THISI SACAE SARCI PHERT EST
+
+start->		THISI SACAE SARCI PHERT EST
+
+KEY		A  s  s  e  m  b  l  y     H  o  m  e  w  o  r  k  A  s  s  e  m  b
+OFF		13 11 11 23 5  20 4  17 6  20 7  5  23 15 7  10 3  13 11 11 23 5  20
+PHR		T  H  I  S  I  S  A  C  A  E  S  A  R  C  I  P  H  E  R  T  E  S  T
+ENC		G  S  T  P  N  M  E  T  G  Y  Z  F  O  R  P  Z  K  R  C  E  B  X  N
+
+end->		GSTPN METGY ZFORP ZKRCE BXN
