@@ -335,15 +335,15 @@ EnterAString PROC
 	MOV [EAX], DL
 	POP EDX
 
+	CMP CH, 1
+	JNE Return
+
 	PUSH ECX
 	; Receives: address of a string in ESI, string length in ECX
 	MOV ESI, EDX
 	MOVZX ECX, data_length
 	call ToUpper
-
 	POP ECX
-	CMP CH, 1
-	JNE Return
 
 	PUSH EAX
 	; Receives: address of the string in ESI, 
